@@ -2,7 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
-  background: transparent;
+  background: transparent !important;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Allow text selection in textarea */
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes progress {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+.animate-progress {
+  animation: progress 0.8s ease-in-out;
 }

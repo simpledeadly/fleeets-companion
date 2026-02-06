@@ -1,17 +1,26 @@
-import { useState, useEffect, useRef } from 'react';
-import { supabase } from './supabase';
-import { appWindow } from '@tauri-apps/api/window';
+import { useState, useEffect, useRef } from "react";
+import { supabase } from "./supabase";
+import { appWindow, LogicalSize } from "@tauri-apps/api/window";
+import { Search, Command, Loader2 } from "lucide-react";
+
+const BASE_HEIGHT = 140;
+const MAX_TEXTAREA_HEIGHT = 300;
 
 function App() {
-  const [text, setText] = useState('');
+  const [text, setText] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const textareaRef = useRef(null);
+  const inputRef = useRef(null);
 
-  // Focus textarea when window gets focus
+  // Focus on mount
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  // Focus when window gets focus
   useEffect(() => {
     const unlisten = appWindow.onFocusChanged(({ focused }) => {
       if (focused) {
-        setTimeout(() => textareaRef.current?.focus(), 50);
+        setTimeout(() => inputRef.current?.focus(), 50);
       }
     });
     return () => {
@@ -19,86 +28,145 @@ function App() {
     };
   }, []);
 
-  const handleKeyDown = async (e) => {
-    // CMD+Enter to submit
-    if (e.key === 'Enter' && e.metaKey) {
+  const resizeWindow = async textareaHeight => {
+    const extraHeight = Math.max(0, textareaHeight - 36);
+    const newHeight = Math.min(
+      BASE_HEIGHT + extraHeight,
+      BASE_HEIGHT + MAX_TEXTAREA_HEIGHT - 36,
+    );
+    try {
+      await appWindow.setSize(
+        new LogicalSize(700, Math.max(BASE_HEIGHT, newHeight)),
+      );
+    } catch (e) {
+      console.error("Failed to resize:", e);
+    }
+  };
+
+  const hideWindow = async () => {
+    setText("");
+    if (inputRef.current) {
+      inputRef.current.style.height = "36px";
+      inputRef.current.style.overflowY = "hidden";
+    }
+    await appWindow.setSize(new LogicalSize(700, BASE_HEIGHT));
+    await appWindow.hide();
+  };
+
+  const handleKeyDown = async e => {
+    if (e.key === "Enter" && e.metaKey) {
       e.preventDefault();
       if (!text.trim()) return;
-      
       await handleSubmit();
     }
-    // ESC to close/hide
-    if (e.key === 'Escape') {
+    if (e.key === "Escape") {
       e.preventDefault();
-      await appWindow.hide();
+      await hideWindow();
     }
+  };
+
+  const handleInput = e => {
+    const textarea = e.target;
+    textarea.style.height = "auto";
+    const newHeight = Math.min(textarea.scrollHeight, MAX_TEXTAREA_HEIGHT);
+    textarea.style.height = newHeight + "px";
+    textarea.style.overflowY =
+      textarea.scrollHeight > MAX_TEXTAREA_HEIGHT ? "auto" : "hidden";
+    resizeWindow(newHeight);
   };
 
   const handleSubmit = async () => {
     setIsSending(true);
     try {
-      const isDelegate = text.toLowerCase().includes('дживс') || text.includes('#дд') || text.includes('#dd');
-      
-      const { error } = await supabase
-        .from('items')
-        .insert([
-          { 
-            content: text,
-            status: 'inbox',
-            type: 'note', // Default to note, system can retriage later
-            user_id: '6ee6af...', // TODO: Auth or fetch dynamically
-            metadata: {
-               source: 'fleeets-companion',
-               delegated: isDelegate
-            }
-          }
-        ]);
+      const isDelegate =
+        text.toLowerCase().includes("дживс") ||
+        text.includes("#дд") ||
+        text.includes("#dd");
+
+      const { error } = await supabase.from("items").insert([
+        {
+          content: text,
+          status: "inbox",
+          type: "task",
+          user_id: "6ee6af65-83f5-4944-8b55-47e73a2963b0",
+          metadata: {
+            source: "fleeets-companion",
+            delegated: isDelegate,
+          },
+        },
+      ]);
 
       if (error) throw error;
 
-      setText('');
-      // Toast success?
-      await appWindow.hide();
+      await hideWindow();
     } catch (error) {
-      console.error('Error adding item:', error);
-      alert('Failed to save item');
+      console.error("Error adding item:", error);
     } finally {
       setIsSending(false);
     }
   };
 
   return (
-    <div className="flex items-center justify-center h-screen w-screen p-4 bg-transparent">
-      <div className="w-full max-w-2xl bg-[#1c1c1c]/90 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden flex flex-col">
-        
-        {/* Omni-Bar Input */}
-        <div className="relative">
+    <div className="h-screen w-screen flex items-start justify-center pt-4 px-4">
+      <div className="w-full max-w-2xl bg-neutral-800 rounded-xl overflow-hidden border border-neutral-700">
+        <div className="flex items-start gap-3 px-5 py-4">
+          <div className="flex-shrink-0 pt-1">
+            {isSending ? (
+              <Loader2 className="w-6 h-6 text-neutral-400 animate-spin" />
+            ) : (
+              <Search className="w-6 h-6 text-neutral-400" />
+            )}
+          </div>
+
           <textarea
-            ref={textareaRef}
+            ref={inputRef}
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={e => setText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type a thought, task, or ask Jeeves..."
-            className="w-full bg-transparent text-white text-lg placeholder-white/30 p-6 min-h-[60px] max-h-[300px] resize-none focus:outline-none scrollbar-hide"
+            onInput={handleInput}
+            placeholder="Что нужно сделать?"
+            disabled={isSending}
+            autoFocus
+            className="
+              flex-1 bg-transparent 
+              text-white text-2xl font-light
+              placeholder-neutral-500 
+              resize-none 
+              focus:outline-none 
+              leading-normal
+              disabled:opacity-50
+            "
             rows={1}
-            style={{ height: 'auto' }}
-            onInput={(e) => {
-              e.target.style.height = 'auto';
-              e.target.style.height = e.target.scrollHeight + 'px';
+            style={{
+              height: "36px",
+              minHeight: "36px",
+              maxHeight: MAX_TEXTAREA_HEIGHT + "px",
+              overflowY: "hidden",
             }}
           />
-          
-          <div className="absolute bottom-4 right-4 flex gap-2 text-xs font-mono text-white/40 pointer-events-none">
-            <span className="bg-white/10 px-1.5 py-0.5 rounded">⏎ Return</span>
-            <span>to new line</span>
-            <span className="bg-white/10 px-1.5 py-0.5 rounded ml-2">⌘ ⏎</span>
-            <span>to save</span>
+
+          {text.length > 0 && (
+            <span className="text-sm text-neutral-500 font-mono tabular-nums pt-1">
+              {text.length}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-6 px-5 py-3 border-t border-neutral-700 bg-neutral-800/50">
+          <div className="flex items-center gap-2 text-sm text-neutral-500">
+            <kbd className="bg-neutral-700 px-2 py-1 rounded text-xs">↵</kbd>
+            <span>строка</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-neutral-500">
+            <kbd className="flex items-center gap-1 bg-neutral-700 px-2 py-1 rounded text-xs">
+              <Command className="w-3 h-3" />↵
+            </kbd>
+            <span>сохранить</span>
           </div>
         </div>
 
-        {/* Footer / Context (Hidden unless active) */}
         {isSending && (
-          <div className="h-1 w-full bg-blue-500/20">
+          <div className="h-1 w-full bg-blue-900">
             <div className="h-full bg-blue-500 animate-progress"></div>
           </div>
         )}

@@ -11,6 +11,7 @@
     "version": "0.0.0"
   },
   "tauri": {
+    "macOSPrivateApi": true,
     "allowlist": {
       "all": false,
       "shell": {
@@ -28,24 +29,22 @@
       "active": true,
       "targets": "all",
       "identifier": "com.simpledeadly.fleeets-companion",
-      "icon": [
-        "icons/32x32.png",
-        "icons/128x128.png",
-        "icons/128x128@2x.png",
-        "icons/icon.icns",
-        "icons/icon.ico"
-      ]
+      "icon": ["icons/icon-32.png", "icons/icon-128.png", "icons/icon-256.png"]
     },
     "security": {
       "csp": null
+    },
+    "systemTray": {
+      "iconPath": "icons/tray.png",
+      "iconAsTemplate": true
     },
     "windows": [
       {
         "fullscreen": false,
         "resizable": false,
         "title": "Fleeets Companion",
-        "width": 800,
-        "height": 600,
+        "width": 700,
+        "height": 140,
         "center": true,
         "decorations": false,
         "transparent": true,
