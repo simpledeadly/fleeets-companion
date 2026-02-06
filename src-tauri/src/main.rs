@@ -8,9 +8,18 @@ use tauri::{
 #[cfg(target_os = "macos")]
 use cocoa::appkit::{NSApplication, NSApplicationActivationPolicy, NSColor, NSWindow};
 #[cfg(target_os = "macos")]
-use cocoa::base::nil;
+use cocoa::base::{id, nil};
 
 fn main() {
+    // Hide dock icon BEFORE anything else on macOS
+    #[cfg(target_os = "macos")]
+    unsafe {
+        let ns_app = NSApplication::sharedApplication(nil);
+        ns_app.setActivationPolicy_(
+            NSApplicationActivationPolicy::NSApplicationActivationPolicyAccessory,
+        );
+    }
+
     // Create system tray menu
     let quit = CustomMenuItem::new("quit".to_string(), "Quit");
     let show = CustomMenuItem::new("show".to_string(), "Show (⌥ Space)");
@@ -46,20 +55,9 @@ fn main() {
             let window = app.get_window("main").unwrap();
             let app_handle = app.handle();
 
-            // Hide dock icon on macOS
+            // Make window transparent on macOS
             #[cfg(target_os = "macos")]
             {
-                use cocoa::base::id;
-
-                // Hide from dock
-                unsafe {
-                    let ns_app = NSApplication::sharedApplication(nil);
-                    ns_app.setActivationPolicy_(
-                        NSApplicationActivationPolicy::NSApplicationActivationPolicyAccessory,
-                    );
-                }
-
-                // Make window transparent
                 let ns_window = window.ns_window().unwrap() as id;
                 unsafe {
                     ns_window.setBackgroundColor_(NSColor::clearColor(nil));

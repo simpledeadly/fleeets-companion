@@ -29,7 +29,18 @@
       "active": true,
       "targets": "all",
       "identifier": "com.simpledeadly.fleeets-companion",
-      "icon": ["icons/icon-32.png", "icons/icon-128.png", "icons/icon-256.png"]
+      "icon": ["icons/icon-32.png", "icons/icon-128.png", "icons/icon-256.png"],
+      "macOS": {
+        "entitlements": null,
+        "exceptionDomain": null,
+        "frameworks": [],
+        "providerShortName": null,
+        "signingIdentity": null,
+        "minimumSystemVersion": "10.13"
+      }
+    },
+    "cli": {
+      "description": "Fleeets Companion"
     },
     "security": {
       "csp": null
